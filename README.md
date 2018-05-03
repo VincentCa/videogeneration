@@ -10,10 +10,28 @@ Inspired by the success of U-Net, an encoder-decoder architecture with skip-conn
 
 <p align="center"><img src="images/4.png" width="700"></p>
 
-We trained this setup on our synthetic symbol dataset, our synthetic MNIST dataset, and the activity dataset. We reached convergence within a few minutes, but found it to be prone to overfitting, which we resolved through cutting down the number of parameters significantly, and improve network regularization. For our experiments, we set h = w = 64 for synthetic data and h = w = 128 for the activity data. We always choose d = 10, which is a reasonable amount of history available for the network. Our sentences are simply represented as one-hot encoded matrices. We show some results below.
+A graphical representation of our network is shown above. The idea behind the structure is as follows: given the current frame and history, we first use the encoder structure to get a condensed representation of the image contents. Once in it, through our use of fully-connected layers in our internal network, we have a high level of expressiveness to manipulate image contents based on the image inputs. However, once it is manipulated, we are left with a highly downsampled and low-quality image. Here, the decoder comes into play and the skip-connections render themselves crucial: through them, the upsampling can re-include lost detail in the images to produce high-quality outputs. Following this logic, we can think about our encoder as bringing our input to a higher-level, more abstract representation, our network-in-network architecture as image transformer, and our decoder as quality and detail enhancing entity.
+
+We perform experiments on our synthetic icon and MNIST datasets, as well as the KTH Human Action Dataset for walking. To train our network, we feed in the textual annotation, the current frame and up to d - 1 preceding frames, if available. The network is then trained to output the next frame. During inference, we just provide an initial frame and the textual description to predict the new frame, and then repeatedly feed in the previous predictions to predict further into the future. In the result section below, we execute this prediction cycle for between five and ten times, but it can be followed an indefinitely number of times.
+
+We reached convergence within a few minutes, but found our architecture to be prone to overfitting, which we resolved through increased regularization. For our experiments, we set h = w = 64 for synthetic data and h = w = 128 for the activity data. We always choose d = 10, which is a reasonable amount of history available for the network. Our sentences are simply represented as one-hot encoded matrices. We show some qualitative results below.
 
 <p align="center"><img src="images/1.png"></p>
 
 <p align="center"><img src="images/2.png"></p>
 
 <p align="center"><img src="images/3.png"></p>
+
+### Adversarial Setup
+
+In an attempt to increase our network’s generalization performance, we added a discriminator network at the end of our frame-generating U-Net network. The idea here is as follows: we want to imitate movement in a realistic manner, but that doesn’t necessarily mean that we need to perfectly reproduce the frames of our training set. In fact, as long as the generated frame is temporally coherent and consistent with the caption, we accept it as a valid frame. When the problem is phrased like this, it becomes less obvious what the best loss function is. In fact, MSE might not be the best choice, as it draws the network towards reproducing as best as possible the training example -  this somewhat over-constraints the output, and that leads to difficulty in training and overfitting. 
+
+In this situation, a discriminator could work well, as it may be thought as a network approximating a loss function. That is due to the adversarial setting, as explained in the introduction: we build a network to recognize real frames from fake ones, and that drives the network to output a measure of “validity” of any input frame. That validity is directly based on the real examples that were shown to the discriminator, and is therefore a dynamically changing loss adapted to the data we want to reproduce.
+
+We added a discriminator working at a frame level as shown below. 
+
+<p align="center"><img src="images/5.png"></p>
+
+Below are some results obtained with U-Net + discriminator. As can be seen, the results are positive and the movement of a person is correctly captured by the generator. We observe that although the images are still lacking high-resolution detail, we are able to generalize positively to the test set.
+
+<p align="center"><img src="images/6.png"></p>
